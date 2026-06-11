@@ -3,46 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>교육 설문조사 실시간 대시보드</title>
+    <title>교육 설문 실시간 대시보드</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f1f5f9; }
+        .card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-7xl mx-auto">
         <!-- 헤더 -->
-        <div class="flex justify-between items-center mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-slate-800">📊 교육 만족도 실시간 대시보드</h1>
-                <p class="text-slate-500 text-sm" id="lastUpdated">업데이트 중...</p>
+                <h1 class="text-3xl font-extrabold text-slate-900">📊 설문 결과 실시간 리포트</h1>
+                <p class="text-slate-500 mt-1" id="lastUpdated">데이터를 불러오는 중...</p>
             </div>
-            <button onclick="fetchData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition text-sm font-semibold">
-                데이터 새로고침
+            <button onclick="fetchData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl transition-all font-bold shadow-lg shadow-indigo-200">
+                🔄 데이터 새로고침
             </button>
         </div>
 
-        <!-- 요약 카드 -->
+        <!-- 요약 카드 (평균 점수) -->
         <div id="statsGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
-            <!-- 자바스크립트에서 렌더링됨 -->
+            <!-- JS로 데이터 렌더링 -->
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- 차트 영역 -->
+            <!-- 방사형 차트 -->
             <div class="lg:col-span-1 card p-6">
-                <h2 class="text-lg font-semibold mb-4 text-slate-700">항목별 역량 분석</h2>
-                <canvas id="radarChart"></canvas>
+                <h2 class="text-xl font-bold mb-6 text-slate-800 flex items-center">
+                    <span class="w-2 h-6 bg-indigo-500 rounded-full mr-2"></span>항목별 만족도 평점
+                </h2>
+                <div class="aspect-square">
+                    <canvas id="radarChart"></canvas>
+                </div>
             </div>
 
             <!-- 주관식 답변 -->
             <div class="lg:col-span-2 card p-6">
-                <h2 class="text-lg font-semibold mb-4 text-slate-700">주관식 답변 및 건의사항</h2>
-                <div class="overflow-y-auto max-h-[500px]" id="feedbackList">
-                    <!-- 자바스크립트에서 렌더링됨 -->
+                <h2 class="text-xl font-bold mb-6 text-slate-800 flex items-center">
+                    <span class="w-2 h-6 bg-emerald-500 rounded-full mr-2"></span>주관식 의견 및 건의사항
+                </h2>
+                <div class="overflow-y-auto max-h-[500px] pr-2" id="feedbackList">
+                    <!-- JS로 데이터 렌더링 -->
                 </div>
             </div>
         </div>
@@ -52,52 +58,60 @@
         const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT0n1KkMN_pVYssQx3jKl1dfl3FTk8BAa5xtSYFAcboi5knQ6W8yG5utbdzoY6H5t1r2Wm_zeqSjAyD/pub?output=csv";
         let myChart = null;
 
+        // 설문 항목 매핑 (순서대로)
+        const labels = ["전체만족도", "커리큘럼", "자료제공", "실습기회", "강사역량", "강의장청결", "실습장청결", "기숙사사용"];
+
         async function fetchData() {
             try {
                 const response = await fetch(sheetUrl);
                 const csvData = await response.text();
                 
                 Papa.parse(csvData, {
-                    header: true,
+                    header: false, // 헤더 이름 대신 인덱스로 접근하기 위해 false 설정
+                    skipEmptyLines: true,
                     complete: function(results) {
-                        processData(results.data);
+                        // 첫 번째 줄(헤더)을 제외한 데이터만 추출
+                        const rows = results.data.slice(1); 
+                        processData(rows);
                     }
                 });
             } catch (error) {
-                console.error("데이터 로드 실패:", error);
-                alert("데이터를 가져오는 데 실패했습니다.");
+                console.error("Data Load Error:", error);
+                document.getElementById('lastUpdated').innerText = "데이터 로드 실패!";
             }
         }
 
-        function processData(data) {
-            // 빈 데이터 필터링
-            const cleanData = data.filter(row => row['타임스태프']);
-            
-            const keys = ["전체만족도", "커리큘럼", "자료제공", "실습기회제공", "강사역량", "강의장 청결", "실습장청결", "기숙사 사용"];
-            const averages = {};
+        function processData(rows) {
+            if (rows.length === 0) return;
 
-            keys.forEach(key => {
-                const sum = cleanData.reduce((acc, row) => acc + (parseFloat(row[key]) || 0), 0);
-                averages[key] = (sum / cleanData.length).toFixed(1);
+            // 1. 점수 계산 (인덱스 1번부터 8번까지가 점수 항목)
+            const averages = labels.map((_, index) => {
+                const colIdx = index + 1; // 타임스태프가 0번이므로 +1
+                const validScores = rows.map(row => parseFloat(row[colIdx])).filter(val => !isNaN(val));
+                const sum = validScores.reduce((a, b) => a + b, 0);
+                return validScores.length > 0 ? (sum / validScores.length).toFixed(1) : 0;
             });
 
             renderStats(averages);
             renderChart(averages);
-            renderFeedback(cleanData);
+            renderFeedback(rows);
             
-            document.getElementById('lastUpdated').innerText = `마지막 업데이트: ${new Date().toLocaleTimeString()} (총 ${cleanData.length}명 참여)`;
+            document.getElementById('lastUpdated').innerText = `최신 업데이트: ${new Date().toLocaleTimeString()} (총 ${rows.length}명 참여)`;
         }
 
         function renderStats(averages) {
             const grid = document.getElementById('statsGrid');
             grid.innerHTML = '';
             
-            Object.entries(averages).forEach(([key, value]) => {
+            labels.forEach((label, i) => {
                 const card = document.createElement('div');
-                card.className = 'card p-4 text-center';
+                card.className = 'card p-4 text-center border border-slate-100 hover:border-indigo-300 transition-colors';
                 card.innerHTML = `
-                    <p class="text-xs text-slate-500 mb-1">${key}</p>
-                    <p class="text-xl font-bold text-blue-600">${value}</p>
+                    <p class="text-[11px] font-semibold text-slate-500 mb-2 truncate">${label}</p>
+                    <p class="text-2xl font-black text-indigo-600">${averages[i]}</p>
+                    <div class="w-full bg-slate-100 h-1 mt-2 rounded-full overflow-hidden">
+                        <div class="bg-indigo-400 h-full" style="width: ${averages[i] * 20}%"></div>
+                    </div>
                 `;
                 grid.appendChild(card);
             });
@@ -105,9 +119,7 @@
 
         function renderChart(averages) {
             const ctx = document.getElementById('radarChart').getContext('2d');
-            const labels = Object.keys(averages);
-            const values = Object.values(averages);
-
+            
             if (myChart) myChart.destroy();
 
             myChart = new Chart(ctx, {
@@ -115,39 +127,61 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: '평균 점수',
-                        data: values,
-                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
-                        borderColor: 'rgb(37, 99, 235)',
-                        pointBackgroundColor: 'rgb(37, 99, 235)',
-                        borderWidth: 2
+                        label: '항목별 평균 점수',
+                        data: averages,
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                        borderColor: 'rgb(79, 70, 229)',
+                        pointBackgroundColor: 'rgb(79, 70, 229)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(79, 70, 229)',
+                        borderWidth: 3
                     }]
                 },
                 options: {
                     scales: {
-                        r: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
+                        r: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: { stepSize: 1, display: false },
+                            grid: { color: '#e2e8f0' },
+                            angleLines: { color: '#e2e8f0' },
+                            pointLabels: { font: { size: 11, weight: 'bold' } }
+                        }
                     },
-                    plugins: { legend: { display: false } }
+                    plugins: { legend: { display: false } },
+                    maintainAspectRatio: false
                 }
             });
         }
 
-        function renderFeedback(data) {
+        function renderFeedback(rows) {
             const list = document.getElementById('feedbackList');
             list.innerHTML = '';
 
-            // 최신순으로 정렬 (역순)
-            [...data].reverse().forEach(row => {
-                if (row['주관식'] && row['주관식'].trim() !== "") {
+            // 9번 인덱스가 주관식 답변 (J열)
+            // 최신순으로 보여주기 위해 배열 뒤집기
+            [...rows].reverse().forEach(row => {
+                const comment = row[9];
+                const timestamp = row[0];
+
+                if (comment && comment.trim() !== "") {
                     const item = document.createElement('div');
-                    item.className = 'mb-4 p-4 border-l-4 border-blue-500 bg-slate-50 rounded-r-lg';
+                    item.className = 'mb-4 p-5 bg-slate-50 border-l-4 border-emerald-400 rounded-r-xl shadow-sm';
                     item.innerHTML = `
-                        <p class="text-sm text-slate-700">${row['주관식']}</p>
-                        <p class="text-xs text-slate-400 mt-2">${row['타임스태프']}</p>
+                        <p class="text-slate-700 leading-relaxed font-medium">${comment.replace(/\n/g, '<br>')}</p>
+                        <div class="flex justify-between mt-3">
+                            <span class="text-[11px] text-slate-400 italic">${timestamp}</span>
+                            <span class="text-[11px] font-bold text-emerald-600">Verified Feedback</span>
+                        </div>
                     `;
                     list.appendChild(item);
                 }
             });
+
+            if(list.innerHTML === "") {
+                list.innerHTML = '<p class="text-center text-slate-400 py-10">아직 접수된 주관식 의견이 없습니다.</p>';
+            }
         }
 
         // 초기 실행 및 1분마다 자동 갱신
