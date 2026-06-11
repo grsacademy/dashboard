@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>교육 설문 실시간 대시보드</title>
+    <title>교육 설문 대시보드</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
@@ -18,7 +18,7 @@
         <!-- 헤더 -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-                <h1 class="text-3xl font-extrabold text-slate-900">📊 설문 결과 실시간 리포트</h1>
+                <h1 class="text-3xl font-extrabold text-slate-900">📊 스탠브루 점포관리자 양성교육 설문 대시보드</h1>
                 <p class="text-slate-500 mt-1" id="lastUpdated">데이터를 불러오는 중...</p>
             </div>
             <button onclick="fetchData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl transition-all font-bold shadow-lg shadow-indigo-200">
@@ -35,7 +35,7 @@
             <!-- 방사형 차트 -->
             <div class="lg:col-span-1 card p-6">
                 <h2 class="text-xl font-bold mb-6 text-slate-800 flex items-center">
-                    <span class="w-2 h-6 bg-indigo-500 rounded-full mr-2"></span>항목별 만족도 평점
+                    <span class="w-2 h-6 bg-indigo-500 rounded-full mr-2"></span>항목별 만족도 평점(5점 척도)
                 </h2>
                 <div class="aspect-square">
                     <canvas id="radarChart"></canvas>
